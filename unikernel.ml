@@ -4,20 +4,31 @@ let now clock = Eio.Time.now clock |> Int64.of_float
 
 let (let@) = (@@)
 
-let start () =
-  let@ env = Eio_unikraft.run in
-  Eio.traceln "Started!!!";
-  let repo = Mem.Repo.v (Irmin_mem.config ()) in
-  let main = Mem.main repo in
-  let info () =
-    Irmin.Info.Default.v ~author:"test" ~message:"test" (now env#clock)
-  in
-  let () = Mem.set_exn main ~info ["greeting"] "Hello from Irmin!" in
-  let rec loop = function
-    | 0 -> Lwt.return_unit
-    | n ->
-        Logs.info (fun f -> f "%s" (Mem.get main ["greeting"]));
-        Eio.Time.sleep env#clock 1.0;
-        loop (n - 1)
-  in
-  loop 4
+open Lwt.Infix
+
+module Make(Tcp : Tcpip.Tcp.S with type ipaddr = Ipaddr.t) = struct
+
+  let start tcp =
+    Tcp.listen tcp ~port:9999 (fun flow ->
+      Tcp.write flow (Cstruct.of_string "aaa") >|= Result.get_ok);
+    Eio_unikraft.run @@ fun env ->
+    (* Lwt_eio.with_event_loop ~clock:env#clock @@ fun () -> *)
+    (* Lwt_eio.run_eio @@ fun () -> *)
+    Logs.info (fun f -> f "Hello");
+    (* Eio.traceln "Started!!!"; *)
+    let repo = Mem.Repo.v (Irmin_mem.config ()) in
+    let main = Mem.main repo in
+    let info () =
+      Irmin.Info.Default.v ~author:"test" ~message:"test" (now env#clock)
+    in
+    Logs.info (fun f -> f "Hello");
+    let () = Mem.set_exn main ~info ["greeting"] "Hello from Irmin!" in
+    let rec loop = function
+      | 0 -> Lwt.return ()
+      | n ->
+          Logs.info (fun f -> f "%s" (Mem.get main ["greeting"]));
+          Eio.Time.sleep env#clock 1.0;
+          loop (n - 1)
+    in
+    loop 100
+end
