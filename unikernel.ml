@@ -1,33 +1,29 @@
-module Mem = Irmin_mem.KV.Make(Irmin.Contents.String)
+open Cmdliner
 
 let now clock = Eio.Time.now clock |> Int64.of_float
 
-let (let@) = (@@)
+let n =
+  let doc = Arg.info ~doc:"Number of iterations" [ "n" ] in
+  Mirage_runtime.register_arg Arg.(value & opt int 10000 doc)
 
-open Lwt.Infix
+let sleep =
+  let doc = Arg.info ~doc:"Sleep time, in milliseconds" [ "sleep" ] in
+  Mirage_runtime.register_arg Arg.(value & opt float 0.01 doc)
 
-module Make(Tcp : Tcpip.Tcp.S with type ipaddr = Ipaddr.t) = struct
-  let start tcp =
+
+module Make(Stack : Tcpip.Stack.V4V6) = struct
+  module Tcp = Stack.TCP
+
+  let info env () =
+    Irmin.Info.Default.v ~author:"test" ~message:"test" (now env#clock)
+  
+  let start stack =
+    let _tcp = Stack.tcp stack in
     Eio_unikraft.run @@ fun env ->
-    Lwt_eio.with_event_loop ~clock:env#clock @@ fun () ->
-    Tcp.listen tcp ~port:9999 (fun flow ->
-      Tcp.write flow (Cstruct.of_string "aaa") >|= Result.get_ok);
-    Logs.info (fun f -> f "Hello");
-    Eio.traceln "Started!!!";
-    let repo = Mem.Repo.v (Irmin_mem.config ()) in
-    let main = Mem.main repo in
-    let info () =
-      Irmin.Info.Default.v ~author:"test" ~message:"test" (now env#clock)
-    in
     Eio.Switch.run @@ fun _ ->
-    Logs.info (fun f -> f "Hello");
-    let () = Mem.set_exn main ~info ["greeting"] "Hello from Irmin!" in
-    let rec loop = function
-      | 0 -> Lwt.return ()
-      | n ->
-          Logs.info (fun f -> f "%s" (Mem.get main ["greeting"]));
-          Eio.Time.sleep env#clock 1.0;
-          loop (n - 1)
-    in
-    loop 100
+    let info = info env in 
+    let repo = Bench.Mem.Repo.v (Irmin_mem.config ()) in
+    let main = Bench.Mem.main repo in
+    Bench.run ~info ~sleep:(sleep ()) ~clock:env#clock main (n ());
+    Lwt.return_unit
 end

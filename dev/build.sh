@@ -1,2 +1,2 @@
-mirage configure -t unikraft-qemu
+mirage configure -t unikraft-qemu --net direct --dhcp true
 make

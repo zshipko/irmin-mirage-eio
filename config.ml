@@ -5,9 +5,9 @@ let main = main "Unikernel.Make" ~packages:[
   package "lwt_eio";
   package "eio_unikraft";
   package ~sublibs:["mem"] "irmin";
-] (tcpv4v6 @-> job)
+] (stackv4v6 @-> job)
 
 let stackv4v6 = generic_stackv4v6 default_network
-let tcpv4v6 = tcpv4v6_of_stackv4v6 stackv4v6
+(* let tcpv4v6 = tcpv4v6_of_stackv4v6 stackv4v6 *)
 
-let () = register "hello" [ main $ tcpv4v6  ]
+let () = register "hello" [ main $ stackv4v6  ]
