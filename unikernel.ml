@@ -8,7 +8,7 @@ let n =
 
 let sleep =
   let doc = Arg.info ~doc:"Sleep time, in milliseconds" [ "sleep" ] in
-  Mirage_runtime.register_arg Arg.(value & opt float 0.01 doc)
+  Mirage_runtime.register_arg Arg.(value & opt float 0.001 doc)
 
 
 module Make(Stack : Tcpip.Stack.V4V6) = struct

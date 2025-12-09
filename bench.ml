@@ -23,11 +23,15 @@ let run ~info ~sleep ~clock branch n =
     | 0 -> ()
     | n ->
       let k = gen_key 2 n in
-      let v = Mem.get branch k in
-      Eio.traceln "Get %d %s" n v;
+      let v = gen_val 4 n in
+      let v' = Mem.get branch k in
+      Eio.traceln "Get %d" n;
+      assert (v = v');
       Eio.Time.sleep clock sleep; 
       get_loop (n - 1)
   in
-  set_loop n;
-  get_loop n
+  Eio.Fiber.all [
+    (fun () -> set_loop n);
+    (fun () -> get_loop n);
+  ]
   
